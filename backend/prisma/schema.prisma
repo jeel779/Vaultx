@@ -1,0 +1,76 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING
+  VERIFIED
+  REJECTED
+  SOLD
+}
+
+model User {
+  id               String         @id @default(uuid())
+  name             String
+  email            String         @unique
+  password         String
+  avatar           String?
+  role             Role           @default(USER)
+  createdAt        DateTime       @default(now())
+  listings         Listing[]      @relation("UserListings")
+  sentMessages     Message[]      @relation("SentMessages")
+  receivedMessages Message[]      @relation("ReceivedMessages")
+}
+
+model Listing {
+  id              String         @id @default(uuid())
+  title           String
+  description     String
+  price           Float
+  category        String         // Gaming, Social Media, Other
+  platform        String         // PUBG, Valorant, Clash of Clans, etc.
+  accountLevel    String
+  country         String
+  status          ListingStatus  @default(PENDING)
+  rejectionReason String?
+  sellerId        String
+  seller          User           @relation("UserListings", fields: [sellerId], references: [id], onDelete: Cascade)
+  images          ListingImage[]
+  messages        Message[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+}
+
+model ListingImage {
+  id        String  @id @default(uuid())
+  imageUrl  String
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  senderId   String
+  receiverId String
+  listingId  String
+  content    String
+  createdAt  DateTime @default(now())
+  
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
