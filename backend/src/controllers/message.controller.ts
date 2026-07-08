@@ -4,6 +4,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { messageSchema } from "../utils/schemas.js";
+import { io, onlineUsers } from "../lib/socket.js";
 
 // POST /messages - Send a message
 export const sendMessage = asyncHandler(async (req: Request, res: Response) => {
@@ -59,6 +60,14 @@ export const sendMessage = asyncHandler(async (req: Request, res: Response) => {
       },
     },
   });
+
+  // Send real-time message through socket io if recipient is connected
+  if (io && receiverId) {
+    const recipientSocketId = onlineUsers.get(receiverId);
+    if (recipientSocketId) {
+      io.to(recipientSocketId).emit("receive-message", message);
+    }
+  }
 
   return res
     .status(201)

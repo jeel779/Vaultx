@@ -41,8 +41,8 @@ model Listing {
   title           String
   description     String
   price           Float
-  category        String         // Gaming, Social Media, Other
-  platform        String         // PUBG, Valorant, Clash of Clans, etc.
+  category        String         
+  platform        String         
   accountLevel    String
   country         String
   status          ListingStatus  @default(PENDING)
