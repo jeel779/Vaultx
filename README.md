@@ -1,6 +1,6 @@
 # VaultX - Secure Gaming & Social Account Marketplace
 
-**VaultX** is a secure, premium, and feature-rich digital marketplace platform designed for trading, selling, and buying gaming accounts (e.g., PUBG, Valorant, Clash of Clans) and social media profiles. Built with a modern, high-performance tech stack, VaultX ensures trust and quality via a robust admin moderation workflow, direct seller-to-buyer messaging, and advanced search filters.
+**VaultX** is a secure, premium, and feature-rich digital marketplace platform designed for trading, selling, and buying gaming accounts (e.g., PUBG, Valorant, Clash of Clans etc) and social media profiles and other accountes etc. Built with a modern, high-performance tech stack, VaultX ensures trust and quality via a robust admin moderation workflow, direct real-time seller-to-buyer messaging, and advanced search filters.
 
 ---
 
@@ -12,22 +12,23 @@
 - **Profiles:** Custom profiles with support for user avatars uploaded via Cloudinary.
 
 ### 🎮 Listing Management
-- **Listing Creation:** Detail-rich listings featuring title, description, price, category, platform, account level, country, and multiple image uploads.
+- **Listing Creation:** Detail-rich listings featuring title, description, price (in ₹ INR), category, platform, account level, country, and multiple image uploads.
 - **Image Hosting:** Seamless image handling using `multer` and `Cloudinary`.
 - **Listing Statuses:** Workflow states including `DRAFT`, `PENDING`, `VERIFIED`, `REJECTED`, and `SOLD`.
 
 ### 🛡️ Admin Moderation Dashboard
 - **Verification Queue:** Admins can inspect newly submitted listings.
 - **Approval System:** Approve listings to make them public or reject them with a custom feedback reason (e.g., "invalid screenshots" or "suspicious level info").
-- **Platform Management:** Full administrative control over active listings.
+- **Platform Management:** Full administrative control over active listings and registered user accounts.
 
-### 💬 In-App Messaging
-- **Contextual Chat:** Direct communication channel between buyers and sellers, pinned to specific listings.
-- **Interactive Chats Panel:** Clean inbox interface on the user dashboard displaying conversations categorized by listings.
+### 💬 Real-Time Messaging (Socket.io)
+- **Instant Chat:** Direct communication channel between buyers and sellers, pinned to specific listings.
+- **Online/Offline Indicators:** Live reactive indicators showing whether a buyer/seller is currently online.
+- **Instant Messaging Delivery:** WebSockets push notifications immediately to the active chat history without manual refresh page pulls.
 
 ### 🔍 Advanced Exploration & Discovery
 - **Live Search & Filter:** Powerful exploration page to query listings by platform, category, level, country, price range, and date.
-- **State Management:** Fast, cached server state fetching powered by TanStack React Query.
+- **Zustand State Stores:** Fast, highly structured, modular local stores for auth, listings, admin operations, and active chat states.
 
 ---
 
@@ -38,8 +39,9 @@
 - **Language:** TypeScript
 - **Styling:** Tailwind CSS (v4)
 - **Routing:** React Router (v7)
-- **State Management & Fetching:** TanStack React Query (v5) & Axios
-- **Form Validation:** React Hook Form & Zod
+- **State Management:** Zustand (Modular Stores)
+- **API Communication:** Axios HTTP Client
+- **Real-Time Layer:** Socket.io-client
 - **Icons:** Lucide React
 
 ### Backend
@@ -48,6 +50,7 @@
 - **Database ORM:** Prisma ORM
 - **Database:** PostgreSQL (via `pg` & `@prisma/adapter-pg`)
 - **File Storage:** Cloudinary & Multer
+- **WebSocket Engine:** Socket.io Server
 - **Security & Validation:** JWT, Cookie-Parser, bcrypt, and Zod
 
 ---
@@ -60,23 +63,25 @@ vaultx/
 │   ├── prisma/             # Prisma Schema & Migrations
 │   ├── src/
 │   │   ├── controllers/    # Route handler controllers
+│   │   ├── lib/            # Prisma connection & Socket.io server configuration
 │   │   ├── middlewares/    # Authentication & upload middlewares
 │   │   ├── routes/         # Express API endpoints mapping
 │   │   ├── utils/          # Schemas, Cloudinary config, helper methods
 │   │   ├── app.ts          # App configuration
-│   │   └── index.ts        # Entry point
+│   │   └── index.ts        # Server entry point
 │   ├── tsconfig.json
 │   └── package.json
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── components/     # Reusable UI elements (Toasts, Footers, Modals)
-│   │   ├── context/        # Auth Context
-│   │   ├── layouts/        # Page layouts (Navbar wrappers, etc.)
+│   │   ├── assets/         # App graphics & static assets
+│   │   ├── components/     # Reusable UI subcomponents (Toasts, Modals, Filters, Chat Layouts)
+│   │   ├── helpers/        # API communication wrapper methods
+│   │   ├── lib/            # Axios API config
 │   │   ├── pages/          # Home, Explore, Listing Details, Dashboards, Auth
-│   │   ├── services/       # Axios API integration layer
+│   │   ├── stores/         # Zustand Modular stores (useAuthStore, useListingStore, useChatStore, useAdminStore)
 │   │   ├── types/          # Common TypeScript definitions
-│   │   ├── App.tsx         # Root component & routing
+│   │   ├── App.tsx         # Root component, routing & global socket lifecycle hook
 │   │   └── main.tsx        # React DOM mounting
 │   ├── tsconfig.json
 │   └── package.json
@@ -106,10 +111,11 @@ vaultx/
      ```
    - Create a `.env` file based on your database and Cloudinary credentials:
      ```env
-     PORT=5000
-     DATABASE_URL="postgresql://user:password@localhost:5432/vaultx_db?schema=public"
+     PORT=8000
+     CORS_ORIGIN=http://localhost:5173
      JWT_SECRET="your_jwt_secret_here"
-     FRONTEND_URL="http://localhost:5173"
+     ADMIN_SECRET_KEY="your_admin_secret_key"
+     DATABASE_URL="postgresql://user:password@localhost:5432/vaultx_db?sslmode=require"
      
      # Cloudinary Configuration
      CLOUDINARY_CLOUD_NAME="your_cloud_name"
@@ -133,6 +139,10 @@ vaultx/
    - Open a new terminal and navigate to the `frontend` directory:
      ```bash
      cd ../frontend
+     ```
+   - Create a `.env` file in the frontend root:
+     ```env
+     VITE_API_URL=http://localhost:8000/api/v1
      ```
    - Install dependencies:
      ```bash

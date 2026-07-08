@@ -40,7 +40,7 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
 
         {/* Price tag */}
         <div className="absolute bottom-3 right-3 bg-slate-900/90 backdrop-blur-sm border border-gray-800 text-white font-bold text-base px-3 py-1 rounded-xl shadow-md">
-          ${listing.price.toLocaleString()}
+          ₹{listing.price.toLocaleString()}
         </div>
       </div>
 

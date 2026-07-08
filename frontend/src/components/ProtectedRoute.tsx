@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { useAuth } from "../context/AuthContext.js";
+import { useAuthStore } from "../stores/useAuthStore";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -8,7 +8,9 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, adminOnly = false }: ProtectedRouteProps) => {
-  const { user, loading, isAuthenticated } = useAuth();
+  const user = useAuthStore((state) => state.authUser);
+  const loading = useAuthStore((state) => state.isLoading);
+  const isAuthenticated = useAuthStore((state) => state.isLoggedIn);
   const location = useLocation();
 
   if (loading) {
@@ -34,3 +36,4 @@ const ProtectedRoute = ({ children, adminOnly = false }: ProtectedRouteProps) =>
 };
 
 export default ProtectedRoute;
+

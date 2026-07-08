@@ -1,23 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import api from "../services/api.js";
-import ListingCard from "../components/ListingCard.js";
-import type { Listing } from "../types/index.js";
-import { Search, Gamepad2, Share2, Wallet, ShieldAlert, Sparkles, CheckCircle2, ShieldCheck } from "lucide-react";
+import FeaturedListings from "../components/FeaturedListings.js";
+import { Search, Gamepad2, Share2, Wallet, Sparkles, ShieldCheck, CheckCircle2, ShieldAlert } from "lucide-react";
 
 const Home = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
-
-  // Fetch 4 latest verified listings
-  const { data, isLoading } = useQuery({
-    queryKey: ["latestListings"],
-    queryFn: async () => {
-      const res = await api.get("/listings?limit=4&sortBy=newest");
-      return res.data?.data?.listings as Listing[];
-    },
-  });
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,39 +141,7 @@ const Home = () => {
             </Link>
           </div>
 
-          {isLoading ? (
-            /* Loading Skeleton Grid */
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="bg-slate-900/40 border border-gray-850 rounded-2xl overflow-hidden animate-pulse flex flex-col h-80">
-                  <div className="w-full bg-slate-800 aspect-video"></div>
-                  <div className="p-5 flex-grow space-y-3.5">
-                    <div className="h-3.5 bg-slate-800 rounded w-1/3"></div>
-                    <div className="h-5 bg-slate-800 rounded w-5/6"></div>
-                    <div className="h-3.5 bg-slate-800 rounded w-full"></div>
-                    <div className="h-3 bg-slate-800 rounded w-2/3"></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : !data || data.length === 0 ? (
-            /* Empty State */
-            <div className="text-center py-16 border border-gray-800 bg-slate-900/20 rounded-2xl">
-              <p className="text-gray-400 font-medium">No verified listings available right now.</p>
-              <Link to="/listings/create" className="text-sm text-blue-400 font-semibold hover:underline mt-2 inline-block">
-                Be the first to create one!
-              </Link>
-            </div>
-          ) : (
-            /* Listings Grid */
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {data.map((listing) => (
-                <div key={listing.id}>
-                  <ListingCard listing={listing} />
-                </div>
-              ))}
-            </div>
-          )}
+          <FeaturedListings />
         </div>
       </section>
 

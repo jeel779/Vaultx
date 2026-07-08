@@ -1,12 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import api from "../services/api.js";
 import { useToast } from "../components/Toast.js";
-import type { Listing } from "../types/index.js";
 import { Upload, X, Loader2, ChevronLeft } from "lucide-react";
 
 // Form validation schema
@@ -22,49 +17,51 @@ const clientListingSchema = z.object({
   country: z.string().trim().min(1, "Country is required"),
 });
 
-type ListingFormData = z.infer<typeof clientListingSchema>;
+import { useListingStore } from "../stores/useListingStore";
 
 const EditListing = () => {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+
+  const currentListing = useListingStore((state) => state.currentListing);
+  const loadingListing = useListingStore((state) => state.isLoading);
+  const fetchListingDetails = useListingStore((state) => state.fetchListingDetails);
+  const updateListing = useListingStore((state) => state.updateListing);
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Controlled form states
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState<"Gaming" | "Social Media" | "Other">("Gaming");
+  const [platform, setPlatform] = useState("");
+  const [price, setPrice] = useState("");
+  const [accountLevel, setAccountLevel] = useState("");
+  const [country, setCountry] = useState("");
+  const [description, setDescription] = useState("");
 
   // Fetch current listing details
-  const { data: listingData, isLoading: loadingListing } = useQuery({
-    queryKey: ["editListingData", id],
-    queryFn: async () => {
-      const res = await api.get(`/listings/${id}`);
-      return res.data?.data?.listing as Listing;
-    },
-    enabled: !!id,
-  });
-
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    formState: { errors },
-  } = useForm<ListingFormData>({
-    resolver: zodResolver(clientListingSchema),
-  });
-
-  // Pre-populate fields once listing loads
   useEffect(() => {
-    if (listingData) {
-      setValue("title", listingData.title);
-      setValue("description", listingData.description);
-      setValue("price", listingData.price.toString());
-      setValue("category", listingData.category);
-      setValue("platform", listingData.platform);
-      setValue("accountLevel", listingData.accountLevel);
-      setValue("country", listingData.country);
+    if (id) {
+      fetchListingDetails(id);
     }
-  }, [listingData, setValue]);
+  }, [id, fetchListingDetails]);
+
+  // Sync form states with store data
+  useEffect(() => {
+    if (currentListing) {
+      setTitle(currentListing.title);
+      setCategory(currentListing.category);
+      setPlatform(currentListing.platform);
+      setPrice(currentListing.price.toString());
+      setAccountLevel(currentListing.accountLevel);
+      setCountry(currentListing.country);
+      setDescription(currentListing.description);
+    }
+  }, [currentListing]);
 
   // Handle files select & preview
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -94,48 +91,59 @@ const EditListing = () => {
     setImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Edit listing mutation
-  const editMutation = useMutation({
-    mutationFn: async (formData: FormData) => {
-      const res = await api.put(`/listings/${id}`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-      return res.data;
-    },
-    onSuccess: () => {
-      toast("Listing updated successfully! Re-submitted for review.", "success");
-      queryClient.invalidateQueries({ queryKey: ["userListings"] });
-      queryClient.invalidateQueries({ queryKey: ["userProfileStats"] });
-      queryClient.invalidateQueries({ queryKey: ["listingDetails", id] });
-      navigate("/dashboard");
-    },
-    onError: (err: any) => {
-      toast(err.response?.data?.message || "Failed to update listing", "error");
-      setIsSaving(false);
-    },
-  });
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!id) return;
 
-  const onSubmit = (data: ListingFormData) => {
+    const result = clientListingSchema.safeParse({
+      title,
+      category,
+      platform,
+      price,
+      accountLevel,
+      country,
+      description,
+    });
+
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.issues.forEach((issue) => {
+        if (issue.path[0]) {
+          fieldErrors[issue.path[0].toString()] = issue.message;
+        }
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+
+    setErrors({});
     setIsSaving(true);
-    const formData = new FormData();
-    formData.append("title", data.title);
-    formData.append("description", data.description);
-    formData.append("price", data.price);
-    formData.append("category", data.category);
-    formData.append("platform", data.platform);
-    formData.append("accountLevel", data.accountLevel);
-    formData.append("country", data.country);
+
+    const submitFormData = new FormData();
+    submitFormData.append("title", title);
+    submitFormData.append("description", description);
+    submitFormData.append("price", price);
+    submitFormData.append("category", category);
+    submitFormData.append("platform", platform);
+    submitFormData.append("accountLevel", accountLevel);
+    submitFormData.append("country", country);
 
     // If new files are selected, append them
     if (selectedFiles.length > 0) {
       selectedFiles.forEach((file) => {
-        formData.append("images", file);
+        submitFormData.append("images", file);
       });
     }
 
-    editMutation.mutate(formData);
+    try {
+      await updateListing(id, submitFormData);
+      toast("Listing updated successfully! Re-submitted for review.", "success");
+      navigate("/dashboard");
+    } catch (err: any) {
+      toast(err.response?.data?.message || "Failed to update listing", "error");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (loadingListing) {
@@ -167,7 +175,7 @@ const EditListing = () => {
       </div>
 
       <div className="bg-slate-900/40 border border-gray-800 p-6 sm:p-8 rounded-2xl backdrop-blur-md shadow-2xl">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={onSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Title */}
             <div className="md:col-span-2">
@@ -176,11 +184,12 @@ const EditListing = () => {
               </label>
               <input
                 type="text"
-                {...register("title")}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
                 className="w-full bg-[#070b13] border border-gray-800 focus:outline-none focus:border-blue-500 rounded-xl px-4 py-3 text-sm text-white transition-colors"
               />
               {errors.title && (
-                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.title.message}</p>
+                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.title}</p>
               )}
             </div>
 
@@ -190,7 +199,8 @@ const EditListing = () => {
                 Category
               </label>
               <select
-                {...register("category")}
+                value={category}
+                onChange={(e) => setCategory(e.target.value as any)}
                 className="w-full bg-[#070b13] border border-gray-800 focus:outline-none focus:border-blue-500 rounded-xl px-4 py-3 text-sm text-white transition-colors"
               >
                 <option value="Gaming">Gaming</option>
@@ -198,7 +208,7 @@ const EditListing = () => {
                 <option value="Other">Other</option>
               </select>
               {errors.category && (
-                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.category.message}</p>
+                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.category}</p>
               )}
             </div>
 
@@ -209,26 +219,28 @@ const EditListing = () => {
               </label>
               <input
                 type="text"
-                {...register("platform")}
+                value={platform}
+                onChange={(e) => setPlatform(e.target.value)}
                 className="w-full bg-[#070b13] border border-gray-800 focus:outline-none focus:border-blue-500 rounded-xl px-4 py-3 text-sm text-white transition-colors"
               />
               {errors.platform && (
-                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.platform.message}</p>
+                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.platform}</p>
               )}
             </div>
 
             {/* Price */}
             <div>
               <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                Asking Price ($ USD)
+                Asking Price (₹ INR)
               </label>
               <input
                 type="text"
-                {...register("price")}
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
                 className="w-full bg-[#070b13] border border-gray-800 focus:outline-none focus:border-blue-500 rounded-xl px-4 py-3 text-sm text-white transition-colors"
               />
               {errors.price && (
-                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.price.message}</p>
+                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.price}</p>
               )}
             </div>
 
@@ -239,11 +251,12 @@ const EditListing = () => {
               </label>
               <input
                 type="text"
-                {...register("accountLevel")}
+                value={accountLevel}
+                onChange={(e) => setAccountLevel(e.target.value)}
                 className="w-full bg-[#070b13] border border-gray-800 focus:outline-none focus:border-blue-500 rounded-xl px-4 py-3 text-sm text-white transition-colors"
               />
               {errors.accountLevel && (
-                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.accountLevel.message}</p>
+                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.accountLevel}</p>
               )}
             </div>
 
@@ -254,11 +267,12 @@ const EditListing = () => {
               </label>
               <input
                 type="text"
-                {...register("country")}
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
                 className="w-full bg-[#070b13] border border-gray-800 focus:outline-none focus:border-blue-500 rounded-xl px-4 py-3 text-sm text-white transition-colors"
               />
               {errors.country && (
-                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.country.message}</p>
+                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.country}</p>
               )}
             </div>
 
@@ -268,23 +282,24 @@ const EditListing = () => {
                 Description / Inventory Details
               </label>
               <textarea
-                {...register("description")}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
                 rows={5}
                 className="w-full bg-[#070b13] border border-gray-800 focus:outline-none focus:border-blue-500 rounded-xl px-4 py-3 text-sm text-white transition-colors whitespace-pre-wrap"
               />
               {errors.description && (
-                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.description.message}</p>
+                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.description}</p>
               )}
             </div>
 
             {/* Existing Images Display */}
-            {listingData && listingData.images.length > 0 && selectedFiles.length === 0 && (
+            {currentListing && currentListing.images.length > 0 && selectedFiles.length === 0 && (
               <div className="md:col-span-2 space-y-2">
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Active Images
                 </label>
                 <div className="flex gap-3 overflow-x-auto pb-1">
-                  {listingData.images.map((img) => (
+                  {currentListing.images.map((img: any) => (
                     <div key={img.id} className="relative aspect-video w-24 rounded-xl overflow-hidden border border-gray-800 bg-slate-950">
                       <img src={img.imageUrl} alt="current asset" className="w-full h-full object-cover" />
                     </div>

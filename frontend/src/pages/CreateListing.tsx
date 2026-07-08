@@ -1,10 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import api from "../services/api.js";
+import { useListingStore } from "../stores/useListingStore";
 import { useToast } from "../components/Toast.js";
 import { Upload, X, Loader2 } from "lucide-react";
 
@@ -21,27 +18,16 @@ const clientListingSchema = z.object({
   country: z.string().trim().min(1, "Country is required"),
 });
 
-type ListingFormData = z.infer<typeof clientListingSchema>;
-
 const CreateListing = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+
+  const createListing = useListingStore((state) => state.createListing);
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<ListingFormData>({
-    resolver: zodResolver(clientListingSchema),
-    defaultValues: {
-      category: "Gaming",
-    },
-  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Handle files select & preview
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,49 +57,68 @@ const CreateListing = () => {
     setImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Create listing mutation
-  const createMutation = useMutation({
-    mutationFn: async (formData: FormData) => {
-      const res = await api.post("/listings", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-      return res.data;
-    },
-    onSuccess: () => {
-      toast("Listing submitted for review successfully!", "success");
-      queryClient.invalidateQueries({ queryKey: ["userListings"] });
-      queryClient.invalidateQueries({ queryKey: ["userProfileStats"] });
-      navigate("/dashboard");
-    },
-    onError: (err: any) => {
-      toast(err.response?.data?.message || "Failed to create listing", "error");
-      setIsSubmitting(false);
-    },
-  });
-
-  const onSubmit = (data: ListingFormData) => {
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     if (selectedFiles.length === 0) {
       toast("Please upload at least 1 image of the account", "error");
       return;
     }
-    
-    setIsSubmitting(true);
-    const formData = new FormData();
-    formData.append("title", data.title);
-    formData.append("description", data.description);
-    formData.append("price", data.price);
-    formData.append("category", data.category);
-    formData.append("platform", data.platform);
-    formData.append("accountLevel", data.accountLevel);
-    formData.append("country", data.country);
-    
-    selectedFiles.forEach((file) => {
-      formData.append("images", file);
+
+    const formDataObj = new FormData(e.currentTarget);
+    const title = formDataObj.get("title") as string;
+    const category = formDataObj.get("category") as string;
+    const platform = formDataObj.get("platform") as string;
+    const price = formDataObj.get("price") as string;
+    const accountLevel = formDataObj.get("accountLevel") as string;
+    const country = formDataObj.get("country") as string;
+    const description = formDataObj.get("description") as string;
+
+    const result = clientListingSchema.safeParse({
+      title,
+      category,
+      platform,
+      price,
+      accountLevel,
+      country,
+      description,
     });
 
-    createMutation.mutate(formData);
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.issues.forEach((issue) => {
+        if (issue.path[0]) {
+          fieldErrors[issue.path[0].toString()] = issue.message;
+        }
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+
+    setErrors({});
+    setIsSubmitting(true);
+
+    const submitFormData = new FormData();
+    submitFormData.append("title", title);
+    submitFormData.append("description", description);
+    submitFormData.append("price", price);
+    submitFormData.append("category", category);
+    submitFormData.append("platform", platform);
+    submitFormData.append("accountLevel", accountLevel);
+    submitFormData.append("country", country);
+    
+    selectedFiles.forEach((file) => {
+      submitFormData.append("images", file);
+    });
+
+    try {
+      await createListing(submitFormData);
+      toast("Listing submitted for review successfully!", "success");
+      navigate("/dashboard");
+    } catch (err: any) {
+      toast(err.response?.data?.message || "Failed to create listing", "error");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -125,7 +130,7 @@ const CreateListing = () => {
       </div>
 
       <div className="bg-slate-900/40 border border-gray-800 p-6 sm:p-8 rounded-2xl backdrop-blur-md shadow-2xl">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={onSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Title */}
             <div className="md:col-span-2">
@@ -134,12 +139,12 @@ const CreateListing = () => {
               </label>
               <input
                 type="text"
+                name="title"
                 placeholder="e.g. Stacked OG Valorant Account - Reaver Vandal & Elderflame Dagger"
-                {...register("title")}
                 className="w-full bg-[#070b13] border border-gray-800 focus:outline-none focus:border-blue-500 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors"
               />
               {errors.title && (
-                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.title.message}</p>
+                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.title}</p>
               )}
             </div>
 
@@ -149,7 +154,8 @@ const CreateListing = () => {
                 Category
               </label>
               <select
-                {...register("category")}
+                name="category"
+                defaultValue="Gaming"
                 className="w-full bg-[#070b13] border border-gray-800 focus:outline-none focus:border-blue-500 rounded-xl px-4 py-3 text-sm text-white transition-colors"
               >
                 <option value="Gaming">Gaming</option>
@@ -157,7 +163,7 @@ const CreateListing = () => {
                 <option value="Other">Other</option>
               </select>
               {errors.category && (
-                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.category.message}</p>
+                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.category}</p>
               )}
             </div>
 
@@ -168,28 +174,28 @@ const CreateListing = () => {
               </label>
               <input
                 type="text"
+                name="platform"
                 placeholder="e.g. Valorant, PUBG, Instagram, YouTube"
-                {...register("platform")}
                 className="w-full bg-[#070b13] border border-gray-800 focus:outline-none focus:border-blue-500 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors"
               />
               {errors.platform && (
-                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.platform.message}</p>
+                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.platform}</p>
               )}
             </div>
 
             {/* Price */}
             <div>
               <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                Asking Price ($ USD)
+                Asking Price (₹ INR)
               </label>
               <input
                 type="text"
-                placeholder="e.g. 150"
-                {...register("price")}
+                name="price"
+                placeholder="e.g. 8500"
                 className="w-full bg-[#070b13] border border-gray-800 focus:outline-none focus:border-blue-500 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors"
               />
               {errors.price && (
-                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.price.message}</p>
+                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.price}</p>
               )}
             </div>
 
@@ -200,12 +206,12 @@ const CreateListing = () => {
               </label>
               <input
                 type="text"
+                name="accountLevel"
                 placeholder="e.g. Lv. 140, 15K Followers"
-                {...register("accountLevel")}
                 className="w-full bg-[#070b13] border border-gray-800 focus:outline-none focus:border-blue-500 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors"
               />
               {errors.accountLevel && (
-                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.accountLevel.message}</p>
+                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.accountLevel}</p>
               )}
             </div>
 
@@ -216,12 +222,12 @@ const CreateListing = () => {
               </label>
               <input
                 type="text"
+                name="country"
                 placeholder="e.g. USA, NA-East, Global, India"
-                {...register("country")}
                 className="w-full bg-[#070b13] border border-gray-800 focus:outline-none focus:border-blue-500 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors"
               />
               {errors.country && (
-                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.country.message}</p>
+                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.country}</p>
               )}
             </div>
 
@@ -231,13 +237,13 @@ const CreateListing = () => {
                 Description / Inventory Details
               </label>
               <textarea
+                name="description"
                 placeholder="Describe your account details, inventory, rare items, skins, verification evidence, etc."
-                {...register("description")}
                 rows={5}
                 className="w-full bg-[#070b13] border border-gray-800 focus:outline-none focus:border-blue-500 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 transition-colors whitespace-pre-wrap"
               />
               {errors.description && (
-                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.description.message}</p>
+                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.description}</p>
               )}
             </div>
 

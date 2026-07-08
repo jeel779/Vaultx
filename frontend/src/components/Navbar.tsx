@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "../context/AuthContext.js";
+import { useAuthStore } from "../stores/useAuthStore";
 import { Shield, Menu, X, LogOut, LayoutDashboard, PlusCircle, User as UserIcon, ShieldAlert } from "lucide-react";
 
 const Navbar = () => {
-  const { user, logout, isAuthenticated } = useAuth();
+  const user = useAuthStore((state) => state.authUser);
+  const logout = useAuthStore((state) => state.logout);
+  const isAuthenticated = useAuthStore((state) => state.isLoggedIn);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const navigate = useNavigate();

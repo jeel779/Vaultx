@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import api from "../services/api.js";
+import { useListingStore } from "../stores/useListingStore";
 import ListingCard from "../components/ListingCard.js";
-import type { Listing } from "../types/index.js";
+import ExploreFilters from "../components/ExploreFilters.js";
 import { Filter, ChevronLeft, ChevronRight, SlidersHorizontal, X } from "lucide-react";
 
 const Explore = () => {
@@ -37,27 +36,26 @@ const Explore = () => {
     setLocalSortBy(sortBy);
   }, [category, platform, minPrice, maxPrice, search, sortBy]);
 
-  // Fetch listings from API
-  const { data, isLoading } = useQuery({
-    queryKey: ["listings", category, platform, minPrice, maxPrice, search, sortBy, page],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (category) params.append("category", category);
-      if (platform) params.append("platform", platform);
-      if (minPrice) params.append("minPrice", minPrice);
-      if (maxPrice) params.append("maxPrice", maxPrice);
-      if (search) params.append("search", search);
-      params.append("sortBy", sortBy);
-      params.append("page", page);
-      params.append("limit", "8"); // 8 per page
-      
-      const res = await api.get(`/listings?${params.toString()}`);
-      return res.data?.data;
-    },
-  });
+  const listings = useListingStore((state) => state.listings);
+  const pagination = useListingStore((state) => state.pagination);
+  const isLoading = useListingStore((state) => state.isLoading);
+  const fetchListings = useListingStore((state) => state.fetchListings);
 
-  const listings = data?.listings as Listing[] | undefined;
-  const pagination = data?.pagination;
+  // Fetch listings from API
+  useEffect(() => {
+    const params: Record<string, string> = {
+      sortBy,
+      page,
+      limit: "8",
+    };
+    if (category) params.category = category;
+    if (platform) params.platform = platform;
+    if (minPrice) params.minPrice = minPrice;
+    if (maxPrice) params.maxPrice = maxPrice;
+    if (search) params.search = search;
+
+    fetchListings(params);
+  }, [category, platform, minPrice, maxPrice, search, sortBy, page, fetchListings]);
 
   const applyFilters = () => {
     const newParams: any = { page: "1" };
@@ -118,97 +116,23 @@ const Explore = () => {
               <Filter className="w-4 h-4 text-blue-500" />
               <span>Filters</span>
             </h2>
-            <button
-              onClick={clearFilters}
-              className="text-xs font-semibold text-gray-400 hover:text-white transition-colors"
-            >
-              Reset
-            </button>
           </div>
-
-          {/* Search Input */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-gray-400 uppercase tracking-wide">Search</label>
-            <input
-              type="text"
-              placeholder="Search title, details..."
-              value={localSearch}
-              onChange={(e) => setLocalSearch(e.target.value)}
-              className="w-full bg-[#070b13] border border-gray-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
-            />
-          </div>
-
-          {/* Category Dropdown */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-gray-400 uppercase tracking-wide">Category</label>
-            <select
-              value={localCategory}
-              onChange={(e) => setLocalCategory(e.target.value)}
-              className="w-full bg-[#070b13] border border-gray-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
-            >
-              <option value="">All Categories</option>
-              <option value="Gaming">Gaming</option>
-              <option value="Social Media">Social Media</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-
-          {/* Platform Input */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-gray-400 uppercase tracking-wide">Platform</label>
-            <input
-              type="text"
-              placeholder="e.g. PUBG, Instagram"
-              value={localPlatform}
-              onChange={(e) => setLocalPlatform(e.target.value)}
-              className="w-full bg-[#070b13] border border-gray-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
-            />
-          </div>
-
-          {/* Price Range */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-gray-400 uppercase tracking-wide">Price Range</label>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                placeholder="Min"
-                value={localMinPrice}
-                onChange={(e) => setLocalMinPrice(e.target.value)}
-                className="w-full bg-[#070b13] border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
-              />
-              <span className="text-gray-600">-</span>
-              <input
-                type="number"
-                placeholder="Max"
-                value={localMaxPrice}
-                onChange={(e) => setLocalMaxPrice(e.target.value)}
-                className="w-full bg-[#070b13] border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
-              />
-            </div>
-          </div>
-
-          {/* Sort By */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-gray-400 uppercase tracking-wide">Sort By</label>
-            <select
-              value={localSortBy}
-              onChange={(e) => setLocalSortBy(e.target.value)}
-              className="w-full bg-[#070b13] border border-gray-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
-            >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-              <option value="priceAsc">Price: Low to High</option>
-              <option value="priceDesc">Price: High to Low</option>
-            </select>
-          </div>
-
-          {/* Apply Button */}
-          <button
-            onClick={applyFilters}
-            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-blue-500/10"
-          >
-            Apply Filters
-          </button>
+          <ExploreFilters
+            localSearch={localSearch}
+            setLocalSearch={setLocalSearch}
+            localCategory={localCategory}
+            setLocalCategory={setLocalCategory}
+            localPlatform={localPlatform}
+            setLocalPlatform={setLocalPlatform}
+            localMinPrice={localMinPrice}
+            setLocalMinPrice={setLocalMinPrice}
+            localMaxPrice={localMaxPrice}
+            setLocalMaxPrice={setLocalMaxPrice}
+            localSortBy={localSortBy}
+            setLocalSortBy={setLocalSortBy}
+            applyFilters={applyFilters}
+            clearFilters={clearFilters}
+          />
         </aside>
 
         {/* ================= MAIN PRODUCTS LISTING GRID ================= */}
@@ -284,112 +208,37 @@ const Explore = () => {
       {/* ================= MOBILE SLIDE-OUT FILTER DRAWER ================= */}
       {showMobileFilters && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-sm md:hidden animate-fade-in">
-          <div className="w-full max-w-xs bg-slate-950 border-l border-gray-800 p-6 flex flex-col justify-between h-full">
-            <div>
-              {/* Header */}
-              <div className="flex items-center justify-between pb-4 border-b border-gray-900 mb-6">
-                <h2 className="font-bold text-white text-lg flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-blue-500" />
-                  <span>Filters</span>
-                </h2>
-                <button
-                  onClick={() => setShowMobileFilters(false)}
-                  className="text-gray-400 hover:text-white"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Form elements */}
-              <div className="space-y-5">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Search</label>
-                  <input
-                    type="text"
-                    placeholder="Search accounts..."
-                    value={localSearch}
-                    onChange={(e) => setLocalSearch(e.target.value)}
-                    className="w-full bg-[#070b13] border border-gray-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Category</label>
-                  <select
-                    value={localCategory}
-                    onChange={(e) => setLocalCategory(e.target.value)}
-                    className="w-full bg-[#070b13] border border-gray-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none"
-                  >
-                    <option value="">All Categories</option>
-                    <option value="Gaming">Gaming</option>
-                    <option value="Social Media">Social Media</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Platform</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. PUBG, Valorant"
-                    value={localPlatform}
-                    onChange={(e) => setLocalPlatform(e.target.value)}
-                    className="w-full bg-[#070b13] border border-gray-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Price Range</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      placeholder="Min"
-                      value={localMinPrice}
-                      onChange={(e) => setLocalMinPrice(e.target.value)}
-                      className="w-full bg-[#070b13] border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
-                    />
-                    <span className="text-gray-600">-</span>
-                    <input
-                      type="number"
-                      placeholder="Max"
-                      value={localMaxPrice}
-                      onChange={(e) => setLocalMaxPrice(e.target.value)}
-                      className="w-full bg-[#070b13] border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Sort By</label>
-                  <select
-                    value={localSortBy}
-                    onChange={(e) => setLocalSortBy(e.target.value)}
-                    className="w-full bg-[#070b13] border border-gray-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none"
-                  >
-                    <option value="newest">Newest First</option>
-                    <option value="oldest">Oldest First</option>
-                    <option value="priceAsc">Price: Low to High</option>
-                    <option value="priceDesc">Price: High to Low</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex flex-col gap-2 mt-8">
+          <div className="w-full max-w-xs bg-slate-950 border-l border-gray-800 p-6 flex flex-col h-full overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-gray-900 mb-6 shrink-0">
+              <h2 className="font-bold text-white text-lg flex items-center gap-2">
+                <Filter className="w-4 h-4 text-blue-500" />
+                <span>Filters</span>
+              </h2>
               <button
-                onClick={applyFilters}
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors"
+                onClick={() => setShowMobileFilters(false)}
+                className="text-gray-400 hover:text-white"
               >
-                Apply Filters
-              </button>
-              <button
-                onClick={clearFilters}
-                className="w-full py-2.5 bg-gray-900 hover:bg-gray-800 border border-gray-800 text-gray-300 rounded-xl text-sm font-semibold transition-colors"
-              >
-                Reset Filters
+                <X className="w-5 h-5" />
               </button>
             </div>
+
+            <ExploreFilters
+              localSearch={localSearch}
+              setLocalSearch={setLocalSearch}
+              localCategory={localCategory}
+              setLocalCategory={setLocalCategory}
+              localPlatform={localPlatform}
+              setLocalPlatform={setLocalPlatform}
+              localMinPrice={localMinPrice}
+              setLocalMinPrice={setLocalMinPrice}
+              localMaxPrice={localMaxPrice}
+              setLocalMaxPrice={setLocalMaxPrice}
+              localSortBy={localSortBy}
+              setLocalSortBy={setLocalSortBy}
+              applyFilters={applyFilters}
+              clearFilters={clearFilters}
+            />
           </div>
         </div>
       )}

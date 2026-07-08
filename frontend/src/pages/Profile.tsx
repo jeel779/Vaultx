@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useAuth } from "../context/AuthContext.js";
+import { useAuthStore } from "../stores/useAuthStore";
 import { useToast } from "../components/Toast.js";
 import { User as UserIcon, Camera, Loader2, ArrowLeft, Mail } from "lucide-react";
 
@@ -11,35 +9,27 @@ const profileSchema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters long"),
 });
 
-type ProfileFormData = z.infer<typeof profileSchema>;
-
 const Profile = () => {
-  const { user, updateProfile } = useAuth();
+  const user = useAuthStore((state) => state.authUser);
+  const updateProfile = useAuthStore((state) => state.updateProfile);
+  const isSaving = useAuthStore((state) => state.isLoading);
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  const [displayName, setDisplayName] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    formState: { errors },
-  } = useForm<ProfileFormData>({
-    resolver: zodResolver(profileSchema),
-  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Pre-populate user name
   useEffect(() => {
     if (user) {
-      setValue("name", user.name);
+      setDisplayName(user.name);
       if (user.avatar) {
         setAvatarPreview(user.avatar);
       }
     }
-  }, [user, setValue]);
+  }, [user]);
 
   // Handle avatar file selection & local preview
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -60,16 +50,21 @@ const Profile = () => {
     };
   }, [avatarPreview]);
 
-  const onSubmit = async (data: ProfileFormData) => {
-    setIsSaving(true);
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const result = profileSchema.safeParse({ name: displayName });
+    if (!result.success) {
+      setErrors({ name: result.error.issues[0]?.message || "Invalid name" });
+      return;
+    }
+
+    setErrors({});
     try {
-      await updateProfile(data.name, avatarFile);
+      await updateProfile(displayName, avatarFile);
       toast("Profile updated successfully!", "success");
       setAvatarFile(null);
     } catch (error: any) {
       toast(error.message || "Failed to update profile", "error");
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -91,7 +86,7 @@ const Profile = () => {
       </div>
 
       <div className="bg-slate-900/60 border border-gray-800 p-8 rounded-2xl backdrop-blur-md shadow-2xl">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={onSubmit} className="space-y-6">
           {/* Avatar Upload */}
           <div className="flex flex-col items-center space-y-3 pb-6 border-b border-gray-850">
             <div className="relative group">
@@ -156,12 +151,13 @@ const Profile = () => {
                 <input
                   type="text"
                   placeholder="Your Name"
-                  {...register("name")}
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-[#070b13] border border-gray-800 focus:outline-none focus:border-blue-500 rounded-xl text-sm text-white transition-colors"
                 />
               </div>
               {errors.name && (
-                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.name.message}</p>
+                <p className="text-xs text-rose-400 mt-1.5 font-medium">{errors.name}</p>
               )}
             </div>
           </div>
@@ -197,3 +193,4 @@ const Profile = () => {
 };
 
 export default Profile;
+

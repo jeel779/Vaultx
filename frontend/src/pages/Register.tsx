@@ -1,9 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useAuth } from "../context/AuthContext.js";
+import { useAuthStore } from "../stores/useAuthStore";
 import { useToast } from "../components/Toast.js";
 import { Shield, KeyRound, Mail, User as UserIcon, Loader2 } from "lucide-react";
 
@@ -20,33 +18,54 @@ const clientRegisterSchema = z
     path: ["confirmPassword"],
   });
 
-type RegisterFormData = z.infer<typeof clientRegisterSchema>;
-
 const Register: React.FC = () => {
-  const { register: signup } = useAuth();
+  const signup = useAuthStore((state) => state.signup);
+  const loading = useAuthStore((state) => state.isLoading);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
   const [showAdminSecret, setShowAdminSecret] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<RegisterFormData>({
-    resolver: zodResolver(clientRegisterSchema),
-  });
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const name = formData.get("name") as string;
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+    const confirmPassword = formData.get("confirmPassword") as string;
+    const adminSecret = formData.get("adminSecret") as string;
 
-  const onSubmit = async (data: RegisterFormData) => {
-    setLoading(true);
+    const result = clientRegisterSchema.safeParse({
+      name,
+      email,
+      password,
+      confirmPassword,
+      adminSecret: adminSecret || undefined,
+    });
+
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.issues.forEach((issue) => {
+        if (issue.path[0]) {
+          fieldErrors[issue.path[0].toString()] = issue.message;
+        }
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+
+    setErrors({});
     try {
-      await signup(data.name, data.email, data.password, data.adminSecret);
+      await signup(name, email, password, adminSecret || undefined);
       toast("Account registered successfully!", "success");
-      navigate("/dashboard");
+      const user = useAuthStore.getState().authUser;
+      if (user?.role === "ADMIN") {
+        navigate("/admin");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (error: any) {
       toast(error.message || "Registration failed", "error");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -63,7 +82,7 @@ const Register: React.FC = () => {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={onSubmit} className="space-y-4">
           {/* Full Name */}
           <div>
             <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
@@ -75,13 +94,13 @@ const Register: React.FC = () => {
               </div>
               <input
                 type="text"
+                name="name"
                 placeholder="John Doe"
-                {...register("name")}
                 className="w-full pl-10 pr-4 py-2.5 bg-[#070b13] border border-gray-800 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors"
               />
             </div>
             {errors.name && (
-              <p className="text-xs text-rose-400 mt-1 font-medium">{errors.name.message}</p>
+              <p className="text-xs text-rose-400 mt-1 font-medium">{errors.name}</p>
             )}
           </div>
 
@@ -96,13 +115,13 @@ const Register: React.FC = () => {
               </div>
               <input
                 type="email"
+                name="email"
                 placeholder="john@example.com"
-                {...register("email")}
                 className="w-full pl-10 pr-4 py-2.5 bg-[#070b13] border border-gray-800 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors"
               />
             </div>
             {errors.email && (
-              <p className="text-xs text-rose-400 mt-1 font-medium">{errors.email.message}</p>
+              <p className="text-xs text-rose-400 mt-1 font-medium">{errors.email}</p>
             )}
           </div>
 
@@ -117,13 +136,13 @@ const Register: React.FC = () => {
               </div>
               <input
                 type="password"
+                name="password"
                 placeholder="••••••••"
-                {...register("password")}
                 className="w-full pl-10 pr-4 py-2.5 bg-[#070b13] border border-gray-800 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors"
               />
             </div>
             {errors.password && (
-              <p className="text-xs text-rose-400 mt-1 font-medium">{errors.password.message}</p>
+              <p className="text-xs text-rose-400 mt-1 font-medium">{errors.password}</p>
             )}
           </div>
 
@@ -138,13 +157,13 @@ const Register: React.FC = () => {
               </div>
               <input
                 type="password"
+                name="confirmPassword"
                 placeholder="••••••••"
-                {...register("confirmPassword")}
                 className="w-full pl-10 pr-4 py-2.5 bg-[#070b13] border border-gray-800 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors"
               />
             </div>
             {errors.confirmPassword && (
-              <p className="text-xs text-rose-400 mt-1 font-medium">{errors.confirmPassword.message}</p>
+              <p className="text-xs text-rose-400 mt-1 font-medium">{errors.confirmPassword}</p>
             )}
           </div>
 
@@ -171,8 +190,8 @@ const Register: React.FC = () => {
                 </div>
                 <input
                   type="password"
+                  name="adminSecret"
                   placeholder="Enter administrator key"
-                  {...register("adminSecret")}
                   className="w-full pl-10 pr-4 py-2 bg-[#09050d] border border-rose-950/30 rounded-lg text-sm text-white placeholder-gray-700 focus:outline-none focus:border-rose-500/60 transition-colors"
                 />
               </div>
@@ -212,3 +231,4 @@ const Register: React.FC = () => {
 };
 
 export default Register;
+
