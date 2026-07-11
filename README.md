@@ -1,165 +1,193 @@
-# VaultX - Secure Gaming & Social Account Marketplace
+# VaultX : A full-stack secure gaming and social account marketplace.
 
-**VaultX** is a secure, premium, and feature-rich digital marketplace platform designed for trading, selling, and buying gaming accounts (e.g., PUBG, Valorant, Clash of Clans etc) and social media profiles and other accountes etc. Built with a modern, high-performance tech stack, VaultX ensures trust and quality via a robust admin moderation workflow, direct real-time seller-to-buyer messaging, and advanced search filters.
+Welcome to VaultX, a premium digital marketplace platform designed for trading, selling, and buying gaming accounts (e.g., PUBG, Valorant, Clash of Clans) and social media profiles. Built with a modern, high-performance tech stack, VaultX ensures trust and quality via a robust admin moderation workflow, direct real-time seller-to-buyer messaging, and advanced search filters.
 
----
+![VaultX Cover](hero_readme.png)
 
-## 🌟 Key Features
+## Features :
+* **Robust Authentication**: Secure user registration, logins via HTTP-only JWT cookies, bcrypt password hashing, and token-based state checking.
+* **Admin Moderation Dashboard**: A dedicated approval and rejection queue system for newly submitted listings, enabling admins to review details, levels, and screenshots, and providing feedback comments on rejection.
+* **Real-Time Direct Chat**: Dynamic inbox messaging powered by Socket.io, complete with online/offline status indicators and instant message delivery.
+* **Detailed Listing Management**: Filterable parameters (Category, Platform, Level, Country, Price range, and Date) along with detailed listing creation.
+* **Image Hosting & Uploads**: Seamless multi-image uploads for listing screenshots and user profile avatar editing via Multer and Cloudinary CDN storage.
+* **User Profile & Management**: Saved lists, listing management tables for editing/deleting posts, user profiles, and active listing tracking.
 
-### 👤 User Authentication & Profile
-- **Secure Auth:** JWT-based user registration and login with cookie-based session management.
-- **Password Protection:** Secure password hashing using `bcrypt`.
-- **Profiles:** Custom profiles with support for user avatars uploaded via Cloudinary.
+## Tech Stack
 
-### 🎮 Listing Management
-- **Listing Creation:** Detail-rich listings featuring title, description, price (in ₹ INR), category, platform, account level, country, and multiple image uploads.
-- **Image Hosting:** Seamless image handling using `multer` and `Cloudinary`.
-- **Listing Statuses:** Workflow states including `DRAFT`, `PENDING`, `VERIFIED`, `REJECTED`, and `SOLD`.
+### Frontend:
+* **React 19** - UI library utilizing the latest rendering features
+* **Vite** - High performance bundler & frontend development environment
+* **TypeScript** - Type-safe programming
+* **Tailwind CSS 4** - Utility-first modern CSS framework
+* **Zustand** - Minimal and performant global state stores
+* **React Router Dom v7** - Single Page App layout and navigation router
+* **Lucide React** - Vector iconography library
+* **Axios** - Promise-based HTTP client for API communication
+* **Socket.io Client** - Client-side real-time WebSocket connection listener
 
-### 🛡️ Admin Moderation Dashboard
-- **Verification Queue:** Admins can inspect newly submitted listings.
-- **Approval System:** Approve listings to make them public or reject them with a custom feedback reason (e.g., "invalid screenshots" or "suspicious level info").
-- **Platform Management:** Full administrative control over active listings and registered user accounts.
+### Backend & Database:
+* **Node.js** - JavaScript runtime environment
+* **TypeScript** - Strict compiler and type safety on the backend
+* **Express.js (v5)** - Fast and minimalist web framework
+* **Prisma** - ORM framework for schema definition and migrations
+* **PostgreSQL** - Relational database store
+* **JsonWebToken & Bcrypt** - Session cookie tokens and credential hashing
+* **Multer** - Upload handling middleware for multipart form-data
+* **Cloudinary SDK** - Cloud storage for secure listing and avatar image hosting
+* **Zod** - Parsing and validation schemas for API inputs
 
-### 💬 Real-Time Messaging (Socket.io)
-- **Instant Chat:** Direct communication channel between buyers and sellers, pinned to specific listings.
-- **Online/Offline Indicators:** Live reactive indicators showing whether a buyer/seller is currently online.
-- **Instant Messaging Delivery:** WebSockets push notifications immediately to the active chat history without manual refresh page pulls.
+### Development Tools:
+* **npm** - Dependency manager and command runner
+* **Prisma CLI** - Database syncing and client generation tool
 
-### 🔍 Advanced Exploration & Discovery
-- **Live Search & Filter:** Powerful exploration page to query listings by platform, category, level, country, price range, and date.
-- **Zustand State Stores:** Fast, highly structured, modular local stores for auth, listings, admin operations, and active chat states.
+## Contributing & Installation
 
----
+### Installation
 
-## 🛠️ Tech Stack
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/jeel779/vaultx.git
+   
+   # For Windows
+   ren vaultx vaultx-portal
+   
+   # For Mac/Linux
+   mv vaultx vaultx-portal
+   
+   cd vaultx-portal
+   ```
 
-### Frontend
-- **Framework:** React (v19) with Vite
-- **Language:** TypeScript
-- **Styling:** Tailwind CSS (v4)
-- **Routing:** React Router (v7)
-- **State Management:** Zustand (Modular Stores)
-- **API Communication:** Axios HTTP Client
-- **Real-Time Layer:** Socket.io-client
-- **Icons:** Lucide React
+2. **Install dependencies**
+   ```bash
+   # Install backend dependencies
+   cd backend
+   npm install
+   
+   # Install frontend dependencies
+   cd ../frontend
+   npm install
+   ```
 
-### Backend
-- **Framework:** Express.js
-- **Language:** TypeScript
-- **Database ORM:** Prisma ORM
-- **Database:** PostgreSQL (via `pg` & `@prisma/adapter-pg`)
-- **File Storage:** Cloudinary & Multer
-- **WebSocket Engine:** Socket.io Server
-- **Security & Validation:** JWT, Cookie-Parser, bcrypt, and Zod
+3. **Environment Setup**
+   
+   Create a `.env` file in the `backend/` directory:
+   ```env
+   PORT=8000
+   DATABASE_URL="postgresql://<user>:<password>@<host>:<port>/<database>?sslmode=require"
+   JWT_SECRET="your_jwt_secret_key"
+   ADMIN_SECRET_KEY="your_admin_secret_key"
+   CORS_ORIGIN="http://localhost:5173"
+   NODE_ENV="development"
 
----
+   # Cloudinary Credentials (for image hosting)
+   CLOUDINARY_CLOUD_NAME="your_cloud_name"
+   CLOUDINARY_API_KEY="your_api_key"
+   CLOUDINARY_API_SECRET="your_api_secret"
+   ```
 
-## 📂 Project Structure
+   Create a `.env` file in the `frontend/` directory:
+   ```env
+   VITE_API_URL="http://localhost:8000/api/v1"
+   ```
 
-```
+4. **Database Setup**
+   ```bash
+   cd ../backend
+   npx prisma migrate dev
+   npx prisma generate
+   ```
+
+5. **Start development server**
+   
+   In one terminal, start the backend:
+   ```bash
+   cd backend
+   npm run dev
+   ```
+   
+   In a second terminal, start the frontend:
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+
+## Folder Structure
+
+```text
 vaultx/
 ├── backend/
-│   ├── prisma/             # Prisma Schema & Migrations
+│   ├── prisma/                  # Prisma Database Schema
+│   │   └── schema.prisma
 │   ├── src/
-│   │   ├── controllers/    # Route handler controllers
-│   │   ├── lib/            # Prisma connection & Socket.io server configuration
-│   │   ├── middlewares/    # Authentication & upload middlewares
-│   │   ├── routes/         # Express API endpoints mapping
-│   │   ├── utils/          # Schemas, Cloudinary config, helper methods
-│   │   ├── app.ts          # App configuration
-│   │   └── index.ts        # Server entry point
+│   │   ├── controllers/         # Express Controllers (admin, auth, listing, message, user)
+│   │   ├── lib/                 # Shared client configurations (Prisma client, Socket helper)
+│   │   ├── middlewares/         # JWT Verification & Multer config
+│   │   ├── routes/              # API router endpoints
+│   │   ├── utils/               # Custom errors, Cloudinary helpers, & validation schemas
+│   │   ├── app.ts               # Express app setups and middlewares
+│   │   └── index.ts             # Main entry point (starts server)
 │   ├── tsconfig.json
 │   └── package.json
 │
 ├── frontend/
+│   ├── public/                  # Static public assets
 │   ├── src/
-│   │   ├── assets/         # App graphics & static assets
-│   │   ├── components/     # Reusable UI subcomponents (Toasts, Modals, Filters, Chat Layouts)
-│   │   ├── helpers/        # API communication wrapper methods
-│   │   ├── lib/            # Axios API config
-│   │   ├── pages/          # Home, Explore, Listing Details, Dashboards, Auth
-│   │   ├── stores/         # Zustand Modular stores (useAuthStore, useListingStore, useChatStore, useAdminStore)
-│   │   ├── types/          # Common TypeScript definitions
-│   │   ├── App.tsx         # Root component, routing & global socket lifecycle hook
-│   │   └── main.tsx        # React DOM mounting
+│   │   ├── assets/              # Web assets (images, icons)
+│   │   ├── components/          # Reusable UI elements (Toasts, Modals, Filters, Chat Layouts)
+│   │   ├── helpers/             # API request communicators
+│   │   ├── lib/                 # Axios HTTP client configuration
+│   │   ├── pages/               # Page routing views (Home, Explore, ListingDetails, Dashboards, Auth)
+│   │   ├── stores/              # Zustand global states (admin, auth, chat, listings)
+│   │   ├── types/               # TypeScript interfaces
+│   │   ├── App.tsx              # Main App wrapper & route maps
+│   │   ├── index.css            # Tailwind variables & global styles
+│   │   └── main.tsx             # React entry point mounting file
+│   ├── vite.config.ts
 │   ├── tsconfig.json
 │   └── package.json
+└── README.md
 ```
 
----
+## Naming Conventions
 
-## 🚀 Getting Started
+### Files & Folders:
+* Use kebab-case or dot-convention for backend utility/route/controller files (e.g., `auth.controller.ts`, `auth.middleware.ts`).
+* Component & Page files use PascalCase (e.g., `ListingCard.tsx`, `CreateListing.tsx`).
+* Custom stores use camelCase prefixed with `use` (e.g., `useAuthStore.tsx`).
+* REST Router files end with `.route.ts` (e.g., `listing.route.ts`).
 
-### Prerequisites
-- Node.js (v18 or higher recommended)
-- PostgreSQL database
-- Cloudinary Account (for image uploads)
+### Components:
+* React components use PascalCase.
+* Component props interfaces use PascalCase ending with `Props` (e.g., `ListingCardProps`).
+* Context/Zustand hooks start with `use` prefix.
 
-### Setup & Installation
+### Database & API:
+* Database models use PascalCase (Prisma convention).
+* API endpoints return standard camelCase payloads.
+* Enum values use UPPER_SNAKE_CASE (or lowercase string matching DB type schema).
 
-1. **Clone the Repository:**
-   ```bash
-   git clone https://github.com/your-username/vaultx.git
-   cd vaultx
-   ```
+### Variables & Functions:
+* Use camelCase for variables and functions.
+* Constants use UPPER_SNAKE_CASE.
+* Boolean variables start with `is`, `has`, `can`, `should`.
 
-2. **Backend Configuration:**
-   - Navigate to the `backend` directory:
-     ```bash
-     cd backend
-     ```
-   - Create a `.env` file based on your database and Cloudinary credentials:
-     ```env
-     PORT=8000
-     CORS_ORIGIN=http://localhost:5173
-     JWT_SECRET="your_jwt_secret_here"
-     ADMIN_SECRET_KEY="your_admin_secret_key"
-     DATABASE_URL="postgresql://user:password@localhost:5432/vaultx_db?sslmode=require"
-     
-     # Cloudinary Configuration
-     CLOUDINARY_CLOUD_NAME="your_cloud_name"
-     CLOUDINARY_API_KEY="your_api_key"
-     CLOUDINARY_API_SECRET="your_api_secret"
-     ```
-   - Install dependencies:
-     ```bash
-     npm install
-     ```
-   - Run database migrations:
-     ```bash
-     npx prisma migrate dev
-     ```
-   - Run the backend development server:
-     ```bash
-     npm run dev
-     ```
+## Core Enums Hierarchy
 
-3. **Frontend Configuration:**
-   - Open a new terminal and navigate to the `frontend` directory:
-     ```bash
-     cd ../frontend
-     ```
-   - Create a `.env` file in the frontend root:
-     ```env
-     VITE_API_URL=http://localhost:8000/api/v1
-     ```
-   - Install dependencies:
-     ```bash
-     npm install
-     ```
-   - Run the frontend development server:
-     ```bash
-     npm run dev
-     ```
-   - Open `http://localhost:5173` in your browser.
+### User Roles:
+* **Role**: `USER`, `ADMIN`
 
----
+### Listing Statuses:
+* **status**: `DRAFT`, `PENDING`, `VERIFIED`, `REJECTED`, `SOLD`
 
-## 🔒 Security Practices
-- Session tokens are stored in secure HTTP-only cookies to prevent XSS attacks.
-- Inputs are validated strictly on both the frontend and backend using Zod schemas.
-- Route protection guards sensitive actions (creating listings, messaging, admin controls) against unauthenticated or unauthorized users.
-
-## 📝 License
-This project is licensed under the ISC License. See the [package.json](file:///c:/Users/Jeelp/Desktop/vaultx/backend/package.json) details for more info.
+## Contribution
+1. Fork the repository and clone your fork.
+2. Make your contribution and raise a PR.
+3. Follow the coding standards:
+   - Use TypeScript for all new code.
+   - Follow the established folder structure.
+   - Include loading and error states for UI components.
+4. Database Changes:
+   - Run `npx prisma db push` or `npx prisma migrate dev` to verify schema updates.
+5. Commit Guidelines:
+   - Use conventional commits: `feat:`, `fix:`, `docs:`, `style:`, `refactor:`, `test:`, `chore:`
+   - Write clear, descriptive commit messages.
